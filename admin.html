@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración - Ferretería</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f8f9fa; color: #2f3640; }
+        h1 { background: #2f3640; color: #fff; padding: 20px; border-radius: 8px; text-align: center; }
+        h2 { border-left: 6px solid #e67e22; padding-left: 10px; margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        th, td { padding: 12px; border: 1px solid #dcdde1; text-align: left; }
+        th { background: #e67e22; color: #fff; }
+        input { padding: 10px; border: 1px solid #dcdde1; border-radius: 6px; margin-right: 10px; }
+        button { padding: 10px 16px; background: #e67e22; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button:hover { background: #cf6d17; }
+        td button { background: #e74c3c; padding: 6px 12px; }
+        td button:hover { background: #c0392b; }
+        .volver { display: inline-block; margin-bottom: 20px; color: #e67e22; font-weight: bold; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Panel de Administración</h1>
+    <a href="index.html" class="volver">← Volver a la Tienda</a>
+
+    <h2>Gestión de Productos</h2>
+    <div style="margin-bottom: 15px;">
+        <input type="text" id="prod-nombre" placeholder="Nombre del producto">
+        <input type="number" id="prod-precio" placeholder="Precio" min="0" step="0.01">
+        <button onclick="altaProducto()">Dar de alta producto</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Acción</th></tr>
+        </thead>
+        <tbody id="tabla-productos"></tbody>
+    </table>
+
+    <h2>Control de Pedidos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Cliente</th><th>Dirección</th><th>Teléfono</th>
+                <th>Productos</th><th>Total</th><th>Fecha</th><th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-pedidos"></tbody>
+    </table>
+
+    <script>
+        const dinero = n => '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+
+        async function cargarProductos() {
+            const resp = await fetch('productos.php');
+            const productos = await resp.json();
+            const tbody = document.getElementById('tabla-productos');
+            tbody.innerHTML = '';
+            productos.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.nombre}</td>
+                        <td>${dinero(p.precio)}</td>
+                        <td><button onclick="bajaProducto(${p.id})">Eliminar</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function altaProducto() {
+            const nombre = document.getElementById('prod-nombre').value.trim();
+            const precio = document.getElementById('prod-precio').value;
+            if (!nombre || precio === '') { alert('Escribe nombre y precio'); return; }
+
+            const resp = await fetch('productos.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, precio })
+            });
+            if (resp.ok) {
+                document.getElementById('prod-nombre').value = '';
+                document.getElementById('prod-precio').value = '';
+                cargarProductos();
+            } else {
+                alert('Error al dar de alta');
+            }
+        }
+
+        async function bajaProducto(id) {
+            if (!confirm('¿Eliminar producto?')) return;
+            const resp = await fetch('productos.php?id=' + id, { method: 'DELETE' });
+            if (resp.ok) cargarProductos();
+        }
+
+        async function cargarPedidos() {
+            const resp = await fetch('pedidos.php');
+            const pedidos = await resp.json();
+            const tbody = document.getElementById('tabla-pedidos');
+            tbody.innerHTML = '';
+            pedidos.forEach(p => {
+                const itemsStr = p.items.map(i => i.producto).join(', ');
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.nombre}</td>
+                        <td>${p.direccion}</td>
+                        <td>${p.telefono}</td>
+                        <td>${itemsStr}</td>
+                        <td>${dinero(p.total)}</td>
+                        <td>${p.fecha}</td>
+                        <td><button onclick="bajaPedido(${p.id})">Eliminar</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function bajaPedido(id) {
+            if (!confirm('¿Eliminar pedido?')) return;
+            const resp = await fetch('pedidos.php?id=' + id, { method: 'DELETE' });
+            if (resp.ok) cargarPedidos();
+        }
+
+        cargarProductos();
+        cargarPedidos();
+    </script>
+</body>
+</html>
